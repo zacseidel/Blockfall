@@ -15,6 +15,7 @@
   };
 
   let COLORS = {};
+  let state, dropTimer;
 
   /* ── Build theme swatches ── */
   const themeGrid = document.getElementById('theme-grid');
@@ -105,7 +106,6 @@
   }
 
   /* ── State ── */
-  let state, dropTimer;
 
   function newState() {
     return {
