@@ -1,21 +1,17 @@
 (() => {
   /* ── Theme definitions ── */
   const THEMES = [
-    {id:'midnight',label:'Night',  bg:'#0a0a0f', dots:['#f0c040','#e05a5a','#5ab4e0']},
-    {id:'cream',   label:'Cream',  bg:'#faf7f2', dots:['#e8601c','#c0392b','#2980b9']},
-    {id:'slate',   label:'Slate',  bg:'#f4f6f8', dots:['#2563eb','#dc2626','#0891b2']},
-    {id:'chalk',   label:'Chalk',  bg:'#fffef7', dots:['#c9900a','#c0392b','#2471a3']},
-    {id:'mint',    label:'Mint',   bg:'#f0faf5', dots:['#059669','#dc2626','#0284c7']},
-    {id:'paper',   label:'Paper',  bg:'#f8f8f6', dots:['#18181b','#e11d48','#0ea5e9']},
+    {id:'clean',  label:'Clean',  bg:'#ffffff', dots:['#111827','#ef4444','#3b82f6']},
+    {id:'dark',   label:'Dark',   bg:'#0d0d12', dots:['#f5f5f5','#f87171','#60a5fa']},
+    {id:'cobalt', label:'Cobalt', bg:'#eef2ff', dots:['#4338ca','#e11d48','#0ea5e9']},
+    {id:'ember',  label:'Ember',  bg:'#fff8f5', dots:['#c2410c','#dc2626','#d97706']},
   ];
 
   const PIECE_COLORS = {
-    midnight:{I:'#5ab4e0',O:'#f0c040',T:'#c45ae0',S:'#5ae08a',Z:'#e05a5a',J:'#7070e8',L:'#f09040'},
-    cream:   {I:'#2980b9',O:'#e67e22',T:'#8e44ad',S:'#27ae60',Z:'#c0392b',J:'#1a5276',L:'#e8601c'},
-    slate:   {I:'#0891b2',O:'#ca8a04',T:'#7c3aed',S:'#16a34a',Z:'#dc2626',J:'#2563eb',L:'#ea580c'},
-    chalk:   {I:'#2471a3',O:'#c9900a',T:'#76448a',S:'#1e8449',Z:'#c0392b',J:'#154360',L:'#ba4a00'},
-    mint:    {I:'#0284c7',O:'#d97706',T:'#7c3aed',S:'#059669',Z:'#dc2626',J:'#1d4ed8',L:'#ea580c'},
-    paper:   {I:'#0ea5e9',O:'#eab308',T:'#a855f7',S:'#22c55e',Z:'#e11d48',J:'#2563eb',L:'#f97316'},
+    clean:  {I:'#0ea5e9',O:'#f59e0b',T:'#8b5cf6',S:'#10b981',Z:'#ef4444',J:'#3b82f6',L:'#f97316'},
+    dark:   {I:'#38bdf8',O:'#fbbf24',T:'#a78bfa',S:'#34d399',Z:'#f87171',J:'#60a5fa',L:'#fb923c'},
+    cobalt: {I:'#0ea5e9',O:'#f59e0b',T:'#7c3aed',S:'#059669',Z:'#dc2626',J:'#4338ca',L:'#ea580c'},
+    ember:  {I:'#0891b2',O:'#d97706',T:'#7c3aed',S:'#16a34a',Z:'#dc2626',J:'#b45309',L:'#c2410c'},
   };
 
   let COLORS = {};
@@ -34,6 +30,7 @@
   });
 
   function applyTheme(id) {
+    if (!PIECE_COLORS[id]) id = 'clean';
     document.documentElement.dataset.theme = id;
     localStorage.setItem('bf_theme', id);
     COLORS = PIECE_COLORS[id];
@@ -43,7 +40,7 @@
   }
 
   /* ── Settings persistence ── */
-  applyTheme(localStorage.getItem('bf_theme') || 'midnight');
+  applyTheme(localStorage.getItem('bf_theme') || 'clean');
 
   const ghostToggle = document.getElementById('ghost-toggle');
   ghostToggle.checked = localStorage.getItem('bf_ghost') !== 'false';
@@ -370,13 +367,20 @@
   bindBtn('btn-drop',     hardDrop);
   bindBtn('btn-pause',    togglePause);
 
-  /* Fix: use pointerdown so the button responds immediately on mobile,
-     consistent with the other game buttons and avoiding click-delay issues
-     caused by touch-action:none on the body. */
-  document.getElementById('overlay-btn').addEventListener('pointerdown', e => {
+  /* Dual-bind START: touchstart fires first on mobile (no 300ms delay),
+     preventDefault cancels the subsequent synthetic click so startGame
+     only runs once. The click listener catches desktop/mouse. */
+  const overlayBtn = document.getElementById('overlay-btn');
+  let _startLock = false;
+  function _handleStart(e) {
     e.preventDefault();
+    if (_startLock) return;
+    _startLock = true;
     startGame();
-  });
+    setTimeout(() => { _startLock = false; }, 600);
+  }
+  overlayBtn.addEventListener('touchstart', _handleStart, {passive: false});
+  overlayBtn.addEventListener('click', _handleStart);
 
   /* ── Swipe ── */
   let tx,ty,tt;
