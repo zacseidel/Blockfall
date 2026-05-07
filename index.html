@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>BLOCKFALL</title>
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=4">
 </head>
 <body>
 
@@ -60,6 +60,11 @@
   <button class="overlay-btn" id="overlay-btn">START</button>
 </div>
 
-<script src="app.js"></script>
+<script>
+  window.onerror = function(msg, src, line) {
+    document.getElementById('overlay-msg').textContent = 'JS Error: ' + msg + ' (line ' + line + ')';
+  };
+</script>
+<script src="app.js?v=4"></script>
 </body>
 </html>
