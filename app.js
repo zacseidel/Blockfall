@@ -15,7 +15,7 @@
   };
 
   let COLORS = {};
-  let state, dropTimer;
+  let state, dropTimer, lockTimer = null;
 
   /* ── Build theme swatches ── */
   const themeGrid = document.getElementById('theme-grid');
@@ -235,16 +235,13 @@
     if (gy===state.py) return;
     const color=COLORS[state.pieceType];
     const pad=Math.max(1,CS*.07), r=Math.max(2,CS*.1);
-    state.piece.forEach((row,rr)=>row.forEach((v,c)=>{
+    ctx.fillStyle=color;
+    ctx.globalAlpha=.2;
+    state.piece.forEach((row,dr)=>row.forEach((v,c)=>{
       if (!v) return;
-      const px=(state.px+c)*CS, py=(gy+rr)*CS;
-      ctx.strokeStyle=color; ctx.lineWidth=1.5; ctx.globalAlpha=.52;
-      roundRect(ctx,px+pad,py+pad,CS-pad*2,CS-pad*2,r,true);
-      ctx.globalAlpha=1;
-      ctx.fillStyle=color; ctx.globalAlpha=.07;
-      roundRect(ctx,px+pad,py+pad,CS-pad*2,CS-pad*2,r,false);
-      ctx.globalAlpha=1;
+      roundRect(ctx,(state.px+c)*CS+pad,(gy+dr)*CS+pad,CS-pad*2,CS-pad*2,r);
     }));
+    ctx.globalAlpha=1;
   }
 
   function drawActivePiece() {
@@ -271,10 +268,21 @@
   function dropSpeed() { return Math.max(75, BASE_SPEED-(state.level-1)*72); }
   function resetDropTimer() { clearInterval(dropTimer); dropTimer=setInterval(tick,dropSpeed()); }
 
+  function cancelLock() { clearTimeout(lockTimer); lockTimer=null; }
+  function scheduleLock() {
+    if (lockTimer) return;
+    lockTimer = setTimeout(() => {
+      lockTimer = null;
+      if (!state.started||state.over||state.paused) return;
+      if (!collides(state.piece,state.px,state.py+1)) return; // piece slid free
+      lockPiece(); if(state.over){gameOver();return;} drawAll();
+    }, 180);
+  }
+
   function tick() {
     if (state.paused||state.over||!state.started) return;
-    if (!collides(state.piece,state.px,state.py+1)) state.py++;
-    else { lockPiece(); if(state.over){gameOver();return;} }
+    if (!collides(state.piece,state.px,state.py+1)) { state.py++; cancelLock(); }
+    else scheduleLock();
     drawAll();
   }
 
@@ -291,6 +299,7 @@
   }
   function hardDrop() {
     if(!active()) return;
+    cancelLock();
     while(!collides(state.piece,state.px,state.py+1)){state.py++;state.score+=2;}
     updateHUD(); lockPiece(); if(state.over){gameOver();return;} drawAll();
   }
@@ -331,7 +340,7 @@
   }
 
   function startGame() {
-    clearInterval(dropTimer);
+    clearInterval(dropTimer); cancelLock();
     state=newState(); state.started=true;
     spawnPiece(); updateHUD(); hideOverlay();
     document.getElementById('btn-pause').textContent='⏸';
@@ -340,7 +349,7 @@
 
   /* ── Keyboard ── */
   document.addEventListener('keydown', e => {
-    const map={ArrowLeft:moveLeft,ArrowRight:moveRight,ArrowDown:softDrop,ArrowUp:rotatePiece,' ':hardDrop,p:togglePause,P:togglePause};
+    const map={ArrowLeft:moveLeft,ArrowRight:moveRight,ArrowDown:hardDrop,ArrowUp:rotatePiece,' ':hardDrop,p:togglePause,P:togglePause};
     if(map[e.key]){e.preventDefault();map[e.key]();}
   });
 
@@ -362,7 +371,7 @@
   }
   bindRepeat('btn-left',  moveLeft);
   bindRepeat('btn-right', moveRight);
-  bindRepeat('btn-down',  softDrop);
+  bindBtn('btn-down',     hardDrop);
   bindBtn('btn-rotate',   rotatePiece);
   bindBtn('btn-drop',     hardDrop);
   bindBtn('btn-pause',    togglePause);
@@ -390,7 +399,7 @@
     const dx=e.changedTouches[0].clientX-tx, dy=e.changedTouches[0].clientY-ty, dt=Date.now()-tt;
     const ax=Math.abs(dx),ay=Math.abs(dy);
     if(ax<10&&ay<10&&dt<220){rotatePiece();return;}
-    if(ay>ax&&dy>26){softDrop();return;}
+    if(ay>ax&&dy>26){hardDrop();return;}
     if(ay>ax&&dy<-26){hardDrop();return;}
     if(ax>ay&&dx<-26){moveLeft();return;}
     if(ax>ay&&dx>26){moveRight();return;}
